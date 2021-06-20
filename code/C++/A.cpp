@@ -2,76 +2,107 @@
 using namespace std;
 #define double long double
 #define int long long
-#define maxx(a,b,c) max(a,max(b,c))
-struct node{
-	int s = 0,pr = 0,u = 0, d = 0;
-};
 vector<int> A;
+struct node{
+	int vl,ct,cg;
+};
 vector<node> tree;
+void down(int cnt){
+	if(tree[cnt].ct != 0){
+		tree[2 * cnt].vl += tree[cnt].ct;
+		tree[2 * cnt + 1].vl += tree[cnt].ct;
+		tree[2 * cnt].ct += tree[cnt].ct;
+		tree[2 * cnt + 1].ct += tree[cnt].ct;	
+		tree[cnt].ct = 0;
+	}
+}
+void down1(int cnt, int l, int r){
+	if(tree[cnt].cg != 0){
+		tree[2 * cnt].vl = tree[cnt].cg * (r - l + 1);
+		tree[2 * cnt + 1].vl = tree[cnt].cg * (r - l + 1);
+		tree[2 * cnt].cg = tree[cnt].cg;
+		tree[2 * cnt + 1].cg = tree[cnt].cg;
+		tree[cnt].cg = 0; 
+	}
+}
 void build(int l, int r, int cnt){
 	if(l == r){
-		tree[cnt].s = A[l];
-		tree[cnt].pr = A[l];
+		tree[cnt].vl = A[l];
+		tree[cnt].ct = tree[cnt].cg = 0;
+		return;
 	}else{
 		int mid = (l + r) / 2;
 		build(l,mid,2 * cnt);
 		build(mid + 1,r,2 * cnt + 1);
-		int a = 2 * cnt, b = 2 * cnt + 1;
-		tree[cnt].s = tree[a].s + tree[b].s;
-		tree[cnt].pr = maxx(tree[a].pr,tree[b].pr,tree[a].pr + tree[a].d + tree[b].pr + tree[b].u);
-		tree[cnt].u = max(tree[a].u,tree[a].s + tree[b].u);
-		tree[cnt].d = max(tree[b].d,tree[a].d + tree[b].s);
+		tree[cnt].vl = tree[2 * cnt + 1].vl + tree[2 * cnt].vl;
 	}
 }
-void up(int l, int r, int cnt, int a, int b){
-	if(a > r || a < l){
+void up1(int l, int r, int cnt, int a, int b, int c){
+	if(b < l || a > r){
+		return;
+	} 
+	if(b >= r && a <= l){
+		tree[cnt].vl += c * (b - a + 1);
+		tree[cnt].ct += c;
 		return;
 	}
-	if(l == r){
-		tree[cnt].s = A[l];
-		tree[cnt].pr = A[l];
-		return;
-	}
-	int x = 2 * cnt, y = 2 * cnt + 1;
+	down(cnt);
 	int mid = (l + r) / 2;
-	up(l,mid,x,a,b);
-	up(mid + 1,r,y,a,b);
-	tree[cnt].s = tree[x].s + tree[y].s;
-	tree[cnt].pr = maxx(tree[x].pr,tree[y].pr,tree[x].pr + tree[x].d + tree[y].pr + tree[y].u);
-	tree[cnt].u = max(tree[x].u,tree[x].s + tree[y].u);
-	tree[cnt].d = max(tree[y].d,tree[x].d + tree[y].s);
+	down1(cnt,l,mid);
+	down1(cnt,mid + 1,r);
+	up1(l,mid,cnt * 2,a,b,c);
+	up1(mid + 1,r,2 * cnt + 1,a,b,c);
+	tree[cnt].vl = tree[2 * cnt].vl + tree[2 * cnt + 1].vl; 
 }
-node query(int l, int r , int cnt, int a, int b){
-	if(a > r || b < l){
-		node E;
-		return E;
+void up2(int l, int r, int cnt, int a, int b, int c){
+	if(b > l || a > r){
+		return;
+	}
+	if(b >= r && a <= l){
+		tree[cnt].vl = c * (b - a  + 1);
+		tree[cnt].cg = c;
+		return;
+	}
+	int mid = (l + r) / 2;
+	down1(cnt,l,mid);
+	down1(cnt,mid + 1,r);
+	up2(l,mid,2 * cnt,a,b,c);
+	up2(mid + 1,r,2 * cnt + 1,a,b,c);
+	tree[cnt].vl = tree[2 * cnt].vl + tree[2 * cnt + 1].vl;
+}
+int query(int l, int r, int cnt, int a, int b){
+	if(b < l || a > r){
+		return 0;
 	}
 	if(a <= l && b >= r){
-		return tree[cnt];
+		return tree[cnt].vl;
 	}
+	down(cnt);
 	int mid = (l + r) / 2;
-	node X = query(l,mid,2 * cnt,a,b);
-	node Y = query(mid + 1,r,2 * cnt + 1,a,b);
-	node T;
-	T.s = X.s + Y.s;
-	T.pr = maxx(X.pr,Y.pr,X.pr + X.d + Y.pr + Y.u);
-	T.u = max(X.u,X.s + Y.u);
-	T.d = max(Y.d,Y.s + X.d);
-	return T;
+	down1(cnt,l,mid);
+	down1(cnt,mid + 1,r);
+	return query(l,mid,2 * cnt,a,b) + query(mid + 1,r,2 * cnt + 1,a,b);
 }
 int32_t main(){
 	ios_base::sync_with_stdio(false);
 	cin.tie(0);
-	int n,m; cin>>n>>m;
-	int sum = 0;
+	int n,q; cin>>n>>q;
 	A.resize(n + 100); tree.resize(n * 4 + 100);
-	for(int i = 0; i < n; ++i){
+	for(int i = 1; i <= n; ++i){
 		cin>>A[i];
 	}
 	build(1,n,1);
-	for(int i = 0; i < m; ++i){
-		int a,b; cin>>a>>b;
+	for(int i = 0; i < q; ++i){
+		int a; cin>>a;
+		if(a == 1){
+			int b,c,d; cin>>b>>c>>d;
+			up1(1,n,1,b,c,d);
+		}else if(a == 2){
+			int b,c,d; cin>>b>>c>>d;
+			up2(1,n,1,b,c,d);
+		}else{
+			int b,c; cin>>b>>c;
+			cout<<query(1,n,1,b,c)<<"\n";
+		}
 	}
-	cout<<query(1,n,1,1,n).s<<"\n";
-	// cout<<tree[1].s<<"\n";s
 }
